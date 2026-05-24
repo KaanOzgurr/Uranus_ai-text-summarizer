@@ -22,7 +22,9 @@ import java.util.List;
 
 public class App extends Application {
 
-    private static String HF_TOKEN = "WRITE YOUR HF TOKEN HERE";
+   
+
+    private static String HF_TOKEN = System.getenv("HF_TOKEN");
     private static final String MODEL = "facebook/bart-large-cnn";
 
     private TextArea inputArea;
