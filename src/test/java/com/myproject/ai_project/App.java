@@ -243,7 +243,7 @@ public class App extends Application {
     }
 
     private String callHuggingFace(String text, int maxLen, int minLen) throws Exception {
-        URL url = new URL("https://router.huggingface.co/hf-inference/models/" + MODEL);
+        URL url = new URL("https://api-inference.huggingface.co/models/" + MODEL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Authorization", "Bearer " + HF_TOKEN);
