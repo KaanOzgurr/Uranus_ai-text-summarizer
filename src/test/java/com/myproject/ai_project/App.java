@@ -243,53 +243,64 @@ public class App extends Application {
     }
 
     private String callHuggingFace(String text, int maxLen, int minLen) throws Exception {
-        URL url = new URL("https://api-inference.huggingface.co/models/" + MODEL);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Authorization", "Bearer " + HF_TOKEN);
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(30000);
-        conn.setReadTimeout(60000);
+    URL url = new URL("https://api-inference.huggingface.co/models/" + MODEL);
+    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+    conn.setRequestMethod("POST");
+    conn.setRequestProperty("Authorization", "Bearer " + HF_TOKEN);
+    conn.setRequestProperty("Content-Type", "application/json");
+    conn.setDoOutput(true);
+    conn.setConnectTimeout(30000);
+    conn.setReadTimeout(60000);
 
-        String escaped = text.replace("\\", "\\\\")
-                             .replace("\"", "\\\"")
-                             .replace("\n", "\\n")
-                             .replace("\r", "");
-        String payload = "{\"inputs\": \"" + escaped + "\", "
-                + "\"parameters\": {\"max_length\": " + maxLen
-                + ", \"min_length\": " + minLen + "}}";
+    String escaped = text.replace("\\", "\\\\")
+                         .replace("\"", "\\\"")
+                         .replace("\n", "\\n")
+                         .replace("\r", "");
 
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(payload.getBytes(StandardCharsets.UTF_8));
-        }
+    String payload = "{\"inputs\": \"" + escaped + "\", "
+            + "\"parameters\": {\"max_length\": " + maxLen
+            + ", \"min_length\": " + minLen + "}}";
 
-      String response = sb.toString();
+    try (OutputStream os = conn.getOutputStream()) {
+        os.write(payload.getBytes(StandardCharsets.UTF_8));
+    }
 
-if (response.contains("loading")) {
-    return "Model is loading, please wait a few seconds and try again.";
+    int code = conn.getResponseCode();
+    InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
+
+    BufferedReader br = new BufferedReader(new InputStreamReader(is));
+    StringBuilder sb = new StringBuilder();
+    String line;
+
+    while ((line = br.readLine()) != null) {
+        sb.append(line);
+    }
+    br.close();
+
+    String response = sb.toString();
+
+    if (response.contains("loading")) {
+        return "Model is loading, please wait a few seconds and try again.";
+    }
+
+    int startKey = response.indexOf("summary_text");
+
+    if (startKey == -1) {
+        return "Unexpected response: " + response;
+    }
+
+    int start = response.indexOf(":", startKey) + 1;
+
+    int firstQuote = response.indexOf("\"", start);
+    if (firstQuote == -1) return "Parsing error: " + response;
+
+    int secondQuote = response.indexOf("\"", firstQuote + 1);
+    if (secondQuote == -1) return "Parsing error: " + response;
+
+    String summary = response.substring(firstQuote + 1, secondQuote);
+
+    return summary.replace("\\n", "\n");
 }
-
-int startKey = response.indexOf("summary_text");
-
-if (startKey == -1) {
-    return "Unexpected response: " + response;
-}
-
-int start = response.indexOf(":", startKey) + 1;
-
-// ilk tırnak
-int firstQuote = response.indexOf("\"", start);
-if (firstQuote == -1) return "Parsing error: " + response;
-
-// ikinci tırnak
-int secondQuote = response.indexOf("\"", firstQuote + 1);
-if (secondQuote == -1) return "Parsing error: " + response;
-
-// sonucu al
-String summary = response.substring(firstQuote + 1, secondQuote);
-
-return summary.replace("\\n", "\n");
 
     private void addToHistory(String input, String summary) {
         String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
